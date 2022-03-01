@@ -73,6 +73,9 @@ class PiramideLobbyState {
     const player = this.connectedPlayers.find((player) => player.id === id);
 
     if (player.id === this.leader.id) {
+      const newLeader = this.getNewLeader();
+      this.leader = newLeader;
+      this.sendMessage({ type: responseTypes.updateLeader });
     }
 
     this.connectedPlayers = this.connectedPlayers.filter(
@@ -102,6 +105,37 @@ class PiramideLobbyState {
     }
 
     this.modifiers.push(modifierId);
+  }
+
+  getNewLeader() {
+    return this.connectedPlayers.find((player) => player.id !== this.leader.id);
+  }
+
+  formatPlayer(player) {
+    return {
+      id: player.id,
+      profile: player.profile,
+    };
+  }
+
+  getState() {
+    const players = this.connectedPlayers.map((player) =>
+      this.formatPlayer(player)
+    );
+    const leader = this.formatPlayer(this.leader);
+
+    return {
+      leader: leader,
+      connectedPlayers: players,
+
+      minPlayers: this.minPlayers,
+      maxPlayers: this.maxPlayers,
+
+      twoDecks: this.twoDecks,
+      jokers: this.jokers,
+      leftovers: this.leftovers,
+      modifiers: this.modifiers,
+    };
   }
 
   removeModifier(modifierId) {
@@ -146,31 +180,6 @@ class PiramideLobbyState {
     this.sendMessage({ type: responseTypes.updateState });
   }
 
-  formatPlayer = (player) => ({
-    id: player.id,
-    profile: player.profile,
-  });
-
-  getState() {
-    const players = this.connectedPlayers.map((player) =>
-      this.formatPlayer(player)
-    );
-    const leader = this.formatPlayer(this.leader);
-
-    return {
-      leader: leader,
-      connectedPlayers: players,
-
-      minPlayers: this.minPlayers,
-      maxPlayers: this.maxPlayers,
-
-      twoDecks: this.twoDecks,
-      jokers: this.jokers,
-      leftovers: this.leftovers,
-      modifiers: this.modifiers,
-    };
-  }
-
   sendMessage(message) {
     switch (message.type) {
       case responseTypes.updateState:
@@ -187,7 +196,7 @@ class PiramideLobbyState {
       case responseTypes.updateLeader:
         const payload = {
           type: responseTypes.updateLeader,
-          error: "Wee, might drop connection",
+          leader: this.leader.id,
         };
         this.connectedPlayers[message.requester].send(JSON.stringify(payload));
         break;
@@ -195,7 +204,7 @@ class PiramideLobbyState {
       case responseTypes.unknownType:
         const payload = {
           type: responseTypes.unknownType,
-          leader: this.leader.id,
+          error: "Wee, might drop connection",
         };
         this.connectedPlayers[message.requester].send(JSON.stringify(payload));
         break;
