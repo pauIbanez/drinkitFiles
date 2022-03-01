@@ -66,17 +66,22 @@ class PiramideLobbyState {
         `Player ${this.leader.profile.username} joined lobby ${this.id}`
       )
     );
-    this.sendMessage({ type: responseTypes.sendState });
+    this.sendMessage({ type: responseTypes.updateState });
   }
 
   removePlayer(id) {
+    const player = this.connectedPlayers.find((player) => player.id === id);
+
+    if (player.id === this.leader.id) {
+    }
+
     this.connectedPlayers = this.connectedPlayers.filter(
       (player) => player.id !== id
     );
     debug(
-      chalk.yellowBright(`Player ${this.leader.username} left lobby ${this.id}`)
+      chalk.yellowBright(`Player ${player.username} left lobby ${this.id}`)
     );
-    this.sendMessage({ type: responseTypes.sendState });
+    this.sendMessage({ type: responseTypes.updateState });
   }
 
   toggleDecks() {
@@ -138,13 +143,23 @@ class PiramideLobbyState {
         return;
     }
 
-    this.sendMessage({ type: responseTypes.sendState });
+    this.sendMessage({ type: responseTypes.updateState });
   }
 
+  formatPlayer = (player) => ({
+    id: player.id,
+    profile: player.profile,
+  });
+
   getState() {
+    const players = this.connectedPlayers.map((player) =>
+      this.formatPlayer(player)
+    );
+    const leader = this.formatPlayer(this.leader);
+
     return {
-      leader: this.leader,
-      connectedPlayers: this.connectedPlayers,
+      leader: leader,
+      connectedPlayers: players,
 
       minPlayers: this.minPlayers,
       maxPlayers: this.maxPlayers,
@@ -158,16 +173,31 @@ class PiramideLobbyState {
 
   sendMessage(message) {
     switch (message.type) {
-      case responseTypes.sendState:
+      case responseTypes.updateState:
+        const payload = {
+          type: responseTypes.updateState,
+          state: this.getState(),
+        };
+
         this.connectedPlayers.forEach(({ connection }) => {
-          connection.send(JSON.stringify(this.getState()));
+          connection.send(JSON.stringify(payload));
         });
         break;
 
+      case responseTypes.updateLeader:
+        const payload = {
+          type: responseTypes.updateLeader,
+          error: "Wee, might drop connection",
+        };
+        this.connectedPlayers[message.requester].send(JSON.stringify(payload));
+        break;
+
       case responseTypes.unknownType:
-        this.connectedPlayers[message.requester].send(
-          JSON.stringify({ error: "Unkown type" })
-        );
+        const payload = {
+          type: responseTypes.unknownType,
+          leader: this.leader.id,
+        };
+        this.connectedPlayers[message.requester].send(JSON.stringify(payload));
         break;
 
       default:

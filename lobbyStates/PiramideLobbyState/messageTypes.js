@@ -8,7 +8,8 @@ const requestTypes = {
 };
 
 const responseTypes = {
-  sendState: "send-state",
+  updateState: "update-state",
+  updateLeader: "update-leader",
   unknownType: "unknown-type",
   startGame: "start-game",
 };
